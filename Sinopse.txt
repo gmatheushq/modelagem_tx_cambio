@@ -1,3 +1,5 @@
+Esse é um projeto da matéria de Introdução à Modelagem Matemática, aqui vai o código utilizado para modelar a taxa de câmbio e o arquivo com os dados diários do valor do real desde 04/07/1994  
+
 O projeto faz a modelagem e a projeção da taxa de câmbio utilizando o modelo matemático Ornstein-Uhlenbeck (OU), um processo que assume que o valor do câmbio tende a reverter para uma média de longo prazo ao longo do tempo.
 
 O programa funciona em três etapas principais:
