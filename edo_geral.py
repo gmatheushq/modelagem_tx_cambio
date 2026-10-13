@@ -921,9 +921,8 @@ def plotar_mensal_primeiro_dia(df, df_full, res, pasta):
     print(f"  Gráfico mensal (dia 1) salvo: {caminho}")
 
 
-# =============================================================================
-# 9. Função principal
-# =============================================================================
+
+# Função principal
 def rodar_modelo(df_base, df_full, modo):
     print(f"\n{'='*60}")
     print(f" Rodando modelo OU — {modo.upper()}")
