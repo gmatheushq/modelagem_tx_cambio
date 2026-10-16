@@ -444,7 +444,7 @@ def plotar_serie_projecao(df_plot, df_full, res, pasta, modo, interativo=False):
     y       = df_plot["valor"].values
     datas   = df_plot["data"]
 
-    passos        = 2*365 if modo == "diario" else 2*12
+    passos        = 365 if modo == "diario" else 2*12
     trajetorias   = simular_ou_mc(res, passos, n_sim=1000)
     media_proj    = trajetorias.mean(axis=1)
     p5            = np.percentile(trajetorias, 5,  axis=1)
