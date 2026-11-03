@@ -140,6 +140,60 @@ resultados_bc_AAAAMMDD-AAAAMMDD/
 - Se θ ≤ 0 (sem reversão à média), o modelo é considerado inválido e nenhum resultado é salvo para aquela frequência.
 - O modelo não é uma recomendação financeira. É um exercício acadêmico de modelagem.
 
+## Possíveis melhorias
+
+Resultados abaixo vêm de testes exploratórios com este código e com séries do BCB (SGS 1) e do Federal Reserve (20 moedas). Os picos e vales foram identificados *a posteriori* e as amostras são pequenas, então tratam-se de indícios, não de regras.
+
+### 1. Condicionar o uso do OU ao comportamento recente do câmbio
+
+Hoje o modelo só é descartado quando θ ≤ 0 ou quando o ADF indica não estacionariedade. Nos testes, a **alta acumulada do câmbio nos 3 anos anteriores ao pico** separou melhor os casos em que o OU funciona:
+
+| Alta nos 3 anos | OU válido | OU ganha do passeio aleatório (6 m) |
+|-----------------|-----------|--------------------------------------|
+| < 10% | 70 de 70 picos | 91% |
+| 10–30% | zona mista | 45% |
+| ≥ 30% | 35% | 8% |
+
+(248 picos de depreciação ≥ 15% em 20 moedas contra o dólar. Em 25 picos locais do real, a reversão foi estimada em 9 de 9 com alta < 30% e em 4 de 16 com alta ≥ 30%; Fisher exato, p < 0,001.)
+
+- Emitir um **aviso adicional** quando a alta acumulada em 3 anos for ≥ 30%, além do aviso do ADF.
+- Os limiares foram escolhidos após olhar os dados. Validá-los fora da amostra (outras moedas, outros períodos) antes de tratá-los como regra.
+
+### 2. Estimação e parâmetros
+
+- **Janela móvel de 3 anos**, reestimada a cada dia, em vez de uma única estimação sobre todo o período. Foi a janela que melhor funcionou; a de 2 anos não reproduziu o ganho.
+- **Log do câmbio** como variável do modelo, garantindo positividade e simulando com exponencial.
+- **Meia-vida fixa e μ de longo prazo** (por exemplo, média de 3 anos e meia-vida de 2 anos) como alternativa quando a estimação por OLS é inválida. Em testes, isso recuperou a reversão em parte dos choques no ápice, mas custou 6% a 24% de EQM fora do ápice. Usar apenas como cenário, não como previsão geral.
+- Incluir **intervalo de confiança dos parâmetros** (bootstrap em blocos), já que θ̂ é muito instável perto de zero.
+
+### 3. Avaliação (backtest)
+
+- Reportar o EQM relativo **por fase do choque** (início, ascensão, ápice, declínio, estabilização), e não só por horizonte, para ver *quando* o OU ganha.
+- Separar avaliação **ex post** (origem escolhida sabendo o pico) de **ex ante** (só informação disponível). O ganho no ápice some quando o ápice não é conhecido de antemão.
+- Testes de significância por choque (Diebold–Mariano com bootstrap em blocos) e correção para múltiplos testes. Hoje os resultados por choque são descritivos.
+- **Documentar e tornar reproduzível o fator *k***, o percentual das menores variações de 4 meses excluídas da amostra (k = 0 usa tudo, k = 90 mantém os 10% maiores). A linha OU (k = 90) da tabela comparativa com o BC ainda não é reproduzida com os scripts atuais e precisa de um script único e conferível.
+
+### 4. Extensões do modelo
+
+- **Segundas ondas.** Em 5 de 8 choques do real houve um novo pico com 83% a 98% da amplitude em cerca de 5 meses, o que interrompe a reversão projetada. Modelos com saltos ou mudança de regime (por exemplo, Markov-switching) podem capturar isso.
+- **Outros benchmarks:** passeio aleatório com deriva, AR(p), ARIMA e GARCH para a volatilidade, além do Focus.
+- **Outras moedas e choques de apreciação** (vales). O padrão se repete, mas com validade mais frequente nos vales (81%) do que nos picos (62%).
+- **Mais variáveis:** diferencial de juros, termos de troca, risco-país. O OU univariado ignora os fundamentos.
+
+### 5. Engenharia e reprodutibilidade
+
+- **Modo sem janela interativa** (`--sem_janela` ou backend `Agg`), já que a janela do gráfico principal pode falhar em ambientes sem interface.
+- **Semente aleatória** (`--seed`) para a simulação de Monte Carlo ser reprodutível.
+- **Download automático da série SGS 1** do BCB em janelas de até 10 anos (limite da API), em vez de depender de `cambio.csv` manual.
+- **Testes automatizados:** simular um OU com θ, μ e σ conhecidos e verificar se a estimação recupera os valores; testar o tratamento de vírgula e ponto decimal.
+- Arquivo `requirements.txt` com versões fixas, e salvar no CSV de saída os parâmetros da execução (período, janela, versão).
+
+### Alternativas já testadas e descartadas
+
+- **Extrapolação periódica** (série de Fourier truncada ou regressão harmônica com períodos ajustados): pior que o passeio aleatório em quase todas as origens, inclusive no ápice.
+- **Modelo SIR** aplicado à curva do choque: não previu o momento do pico (0 de 8 acertos a 90% da subida) e as projeções ficaram muito pior que o passeio aleatório, com parâmetros instáveis.
+- **Outras definições de μ** (média de 5 e 10 anos, mínimo recente): não superam o OLS antes do pico e pioram fora do ápice.
+
 ## Autor
 
 **Matheus Henrique Gomes dos Santos**
