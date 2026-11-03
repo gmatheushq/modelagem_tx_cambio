@@ -1,6 +1,6 @@
 # Modelagem da Taxa de Câmbio com o Processo de Ornstein-Uhlenbeck
 
-Projeto da disciplina **Introdução à Modelagem Matemática**.
+Projeto realizado na disciplina **Introdução à Modelagem Matemática** e aprofundado para apresentação no VII ENGOPE e submetido para o EAMC/LNCC.
 
 O programa modela e projeta a taxa de câmbio do real usando o **processo de Ornstein-Uhlenbeck (OU)**, um modelo que assume que o valor tende a reverter para uma média de longo prazo. Os dados são as cotações diárias do real desde **01/07/1994**.
 
