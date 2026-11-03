@@ -152,10 +152,6 @@ Esse resultado vale tanto para choques domésticos (91%) quanto para crises glob
 
 ![OU por faixa de alta anterior e por tipo de crise](docs/moedas_faixas.png)
 
-No real, os choques de 2008, 2011, 2018 e 2025, que vieram depois de altas de 6% a 14% em 3 anos, são os que o OU reverteu. Os de 2002, 2013, 2015 e 2020, precedidos de altas de 39% a 107%, não tiveram reversão estimada no ápice.
-
-![Quando o OU ganha, por choque e por prazo da previsão](docs/quando_ganha_por_choque.png)
-
 Exemplo de bom comportamento: no ápice de 2025 (02/01/2025), a média de reversão calculada pelo OU previu uma queda de 10,2% em 12 meses e o realizado foi de 12,4%. O câmbio realizado ficou dentro da banda de 90% em todos os dias e dentro da banda de 50% em 52% deles.
 
 ![Projeção do OU a partir do ápice de 2025](docs/apice_2025.png)
