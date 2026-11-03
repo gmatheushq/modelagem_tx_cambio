@@ -140,6 +140,39 @@ resultados_bc_AAAAMMDD-AAAAMMDD/
 - Se θ ≤ 0 (sem reversão à média), o modelo é considerado inválido e nenhum resultado é salvo para aquela frequência.
 - O modelo não é uma recomendação financeira. É um exercício acadêmico de modelagem.
 
+## Resultados exploratórios
+
+Os testes abaixo usaram este código no câmbio do real (SGS 1, 1999–2026) e o mesmo procedimento em 20 moedas contra o dólar (séries diárias do Federal Reserve). Os picos e vales foram identificados *a posteriori*, as amostras são pequenas e os limiares foram escolhidos após olhar os dados, então os resultados são indícios, não regras. As figuras ficam na pasta `docs/`.
+
+### Quando o OU funciona bem: choques precedidos de alta pequena
+
+O OU reverte bem os choques em que o câmbio **não vinha de uma alta longa**. Em 248 picos de depreciação de pelo menos 15% (20 moedas), os 70 picos precedidos de alta inferior a 10% nos 3 anos anteriores tiveram reversão estimada em **todos** os casos (70 de 70), e o OU ganhou do passeio aleatório em 6 meses em **91%** deles. Com alta de 30% ou mais, a reversão só foi estimada em 35% dos picos, e o OU ganhou em 8%.
+
+Esse resultado vale tanto para choques domésticos (91%) quanto para crises globais (93%). Nos vales (apreciações), o padrão é parecido, mas mais fraco: com variação anterior menor que 10%, o OU ganhou em 69% dos casos.
+
+![OU por faixa de alta anterior e por tipo de crise](docs/moedas_faixas.png)
+
+No real, os choques de 2008, 2011, 2018 e 2025, que vieram depois de altas de 6% a 14% em 3 anos, são os que o OU reverteu. Os de 2002, 2013, 2015 e 2020, precedidos de altas de 39% a 107%, não tiveram reversão estimada no ápice.
+
+![Quando o OU ganha, por choque e por prazo da previsão](docs/quando_ganha_por_choque.png)
+
+Exemplo de bom comportamento: no ápice de 2025 (02/01/2025), a média de reversão calculada pelo OU previu uma queda de 10,2% em 12 meses e o realizado foi de 12,4%. O câmbio realizado ficou dentro da banda de 90% em todos os dias e dentro da banda de 50% em 52% deles.
+
+![Projeção do OU a partir do ápice de 2025](docs/apice_2025.png)
+
+### Outros testes
+
+Além do OU com parâmetros estimados por OLS, foram testadas variações do modelo e duas extrapolações periódicas, contra o passeio aleatório (RW). O gráfico mostra o EQM relativo em 6 meses (< 1 ganha do RW) em três situações: na subida do choque, no ápice e em todos os dias desde 2000.
+
+![Alternativas testadas contra o RW](docs/testes_alternativas.png)
+
+- **Trocar o μ** (média de 3 anos ou mínimo de 1,5 ano, com meia-vida fixa de 2 anos) reduz o erro no ápice e recupera a reversão em parte dos choques em que o OLS falhava, como 2002 e 2015. Fora do ápice, piora em 9% a 12%.
+- **Extrapolação periódica** (série de Fourier ou regressão harmônica) não converge para um nível, por isso o erro aumenta com o horizonte. O erro chega a 1,9 e 2,3 vezes o do RW em todos os dias.
+- **Modelo SIR** aplicado à curva do choque não previu o momento do pico (0 de 8 acertos com 90% da subida percorrida) e as projeções ficaram muito piores que as do RW. Os parâmetros estimados são instáveis.
+- **Ex post × ex ante:** o ganho no ápice depende de saber que se está no ápice. Na subida, nenhuma variante ganha do RW.
+
+Observação: no gráfico, o "OU atual" no ápice considera o RW (razão = 1) nos choques em que a estimação por OLS é inválida.
+
 ## Possíveis melhorias
 
 Resultados abaixo vêm de testes exploratórios com este código e com séries do BCB (SGS 1) e do Federal Reserve (20 moedas). Os picos e vales foram identificados *a posteriori* e as amostras são pequenas, então tratam-se de indícios, não de regras.
@@ -198,4 +231,3 @@ Hoje o modelo só é descartado quando θ ≤ 0 ou quando o ADF indica não esta
 
 **Matheus Henrique Gomes dos Santos**
 Instituto de Matemática e Estatística (IME), Universidade Federal de Goiás (UFG)
-
