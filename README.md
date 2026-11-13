@@ -48,15 +48,6 @@ O código também faz um **backtest rolling** que compara o modelo OU com o **pa
 - RMSE e MAE por horizonte
 - Tabela de EQM relativo por fator *k* (percentis de variação), comparada com os valores de referência do paper do BC
 
-## Requisitos
-
-- Python 3.8+
-- `pandas`, `numpy`, `matplotlib`, `scipy`
-
-```bash
-pip install pandas numpy matplotlib scipy
-```
-
 ## Formato dos dados
 
 O CSV de entrada deve ter as colunas `data` e `valor`:
