@@ -10,16 +10,6 @@ import matplotlib.patches as mpatches
 import matplotlib.gridspec as gridspec
 from scipy import stats
 
-
-# CONFIGURAÇÃO DE PERÍODO — via argparse (linha de comando)
-
-# Uso:
-#   python cambio_ou_modelo.py                            → usa todos os dados
-#   python cambio_ou_modelo.py --inicio 2015-01-01        → a partir de 2015
-#   python cambio_ou_modelo.py --inicio 2015-01-01 --fim 2023-12-31
-#   python cambio_ou_modelo.py --anos_recentes 5          → últimos 5 anos
-
-
 parser = argparse.ArgumentParser(
     description="Modelo OU para câmbio com validação BC",
     formatter_class=argparse.RawTextHelpFormatter,
@@ -58,8 +48,7 @@ parser.add_argument("--csv",            type=str, default="cambio.csv",
 args, _ = parser.parse_known_args()
 
 
-# 0. Helpers de pasta — nomeação por período e anti-sobrescrita
-
+# helpers de pasta
 def montar_nome_pasta_periodo(df_filtrado, prefixo="resultados"):
     """
     Gera um nome de pasta baseado no período efetivo dos dados filtrados.
@@ -69,8 +58,6 @@ def montar_nome_pasta_periodo(df_filtrado, prefixo="resultados"):
     d_ini = df_filtrado["data"].min().strftime("%Y%m%d")
     d_fim = df_filtrado["data"].max().strftime("%Y%m%d")
     base  = f"{prefixo}_{d_ini}-{d_fim}"
-
-    # Anti-sobrescrita: adiciona versão se já existir
     pasta = base
     v = 2
     while os.path.exists(pasta):
@@ -79,13 +66,10 @@ def montar_nome_pasta_periodo(df_filtrado, prefixo="resultados"):
 
     return pasta
 
-
-# Raiz dos resultados — será definida após filtrar o df principal
-# (declarada como variável global após o filtro)
 PASTA_RAIZ_OU = None
 PASTA_RAIZ_BC = None
 
-# 1. Limpeza de números
+# limpeza de numeros
 def limpar_numero(x):
     if pd.isna(x):
         return np.nan
@@ -103,9 +87,7 @@ def limpar_numero(x):
     except Exception:
         return np.nan
 
-
-
-# 2. Ler CSV
+# leitura csv
 df_full = pd.read_csv(args.csv, sep=",", dtype=str, engine="python")
 df_full.columns = df_full.columns.str.strip()
 
@@ -117,7 +99,7 @@ df_full["data"]  = pd.to_datetime(df_full["data"], errors="coerce")
 df_full = df_full.dropna().copy()
 df_full = df_full.sort_values("data").reset_index(drop=True)
 
-# 3. Filtro de período (linha de comando)
+# filtro de periodo
 def aplicar_filtro_periodo(df_in, inicio=None, fim=None, anos_recentes=None):
     """
     Aplica filtro de período ao DataFrame.
@@ -146,8 +128,6 @@ def aplicar_filtro_periodo(df_in, inicio=None, fim=None, anos_recentes=None):
           f"→ {df_out['data'].max().date()} | {len(df_out)} obs\n")
     return df_out.reset_index(drop=True)
 
-
-# Aplica filtro global ao df principal
 df = aplicar_filtro_periodo(
     df_full,
     inicio=args.inicio,
@@ -155,7 +135,6 @@ df = aplicar_filtro_periodo(
     anos_recentes=args.anos_recentes
 )
 
-# Define raízes de resultados nomeadas pelo período — NUNCA sobrescreve pasta existente
 PASTA_RAIZ_OU = montar_nome_pasta_periodo(df, prefixo="resultados_ou")
 PASTA_RAIZ_BC = montar_nome_pasta_periodo(df, prefixo="resultados_bc")
 
@@ -163,7 +142,7 @@ print(f"  Pasta OU : {PASTA_RAIZ_OU}/")
 print(f"  Pasta BC : {PASTA_RAIZ_BC}/")
 
 
-# 3.1. Série real após o período de ajuste
+# serie real pos período de ajuste
 def obter_realizado_futuro(df_full, data_ultima_amostra, data_final_proj, modo):
     """
     Retorna os valores reais disponíveis entre o fim da amostra ajustada e o fim da projeção.
@@ -185,7 +164,7 @@ def obter_realizado_futuro(df_full, data_ultima_amostra, data_final_proj, modo):
     return df_real.reset_index(drop=True)
 
 
-# 4. ADF Otimizado com busca por bisseção (Golden Section Search)
+# adf
 def teste_adf_manual(y, lags=1):
     """
     ADF simplificado (OLS puro, sem statsmodels).
@@ -222,13 +201,6 @@ def teste_adf_manual(y, lags=1):
 
 
 def selecionar_lags_aic(y, max_lags=10):
-    """
-    Seleciona número ótimo de lags para o ADF via AIC.
-    Mais eficiente que calcular todos os lags sequencialmente:
-    usa early-stopping quando AIC começa a subir consistentemente.
-
-    Retorna: (melhor_lag, aic_min)
-    """
     dy = np.diff(y)
     n  = len(dy)
     max_lags = min(max_lags, n // 4)
@@ -266,7 +238,7 @@ def selecionar_lags_aic(y, max_lags=10):
                 pioras_consecutivas = 0
             else:
                 pioras_consecutivas += 1
-                # early-stopping: 3 pioras consecutivas  para busca
+                # early-stopping: 3 pioras consecutivas para busca
                 if pioras_consecutivas >= 3:
                     break
         except Exception:
@@ -298,7 +270,7 @@ def teste_adf_otimizado(y, max_lags=10, verbose=False):
     }
 
 
-# 5. Ajuste OU com validações
+# ajuste do OU com as validações
 def ajustar_ou(y, pasta, nome="", freq_anual=252):
     """
     Estima o processo OU por OLS na forma discreta:
@@ -316,7 +288,7 @@ def ajustar_ou(y, pasta, nome="", freq_anual=252):
         print(f"   [{nome}] Série muito curta ({len(y)} obs). Pulando.")
         return None
 
-    # ADF otimizado (seleção de lags via AIC com early-stopping)
+    # adf otimizado
     adf_res       = teste_adf_otimizado(y, max_lags=min(10, len(y)//5))
     t_adf         = adf_res["t_stat"]
     critico_5pct  = -2.86
@@ -401,7 +373,7 @@ def ajustar_ou(y, pasta, nome="", freq_anual=252):
     }
 
 
-# 6. Simulação Monte Carlo
+# simulação monte carlo
 def simular_ou_mc(res, passos, n_sim=1000):
     theta = res["theta"]
     mu    = res["mu"]
@@ -420,8 +392,6 @@ def simular_ou_mc(res, passos, n_sim=1000):
                           + sigma * eps)
     return trajetorias
 
-
-# 7. Plots separados — cada gráfico em seu próprio arquivo
 def _titulo_ou(res, modo):
     """Gera string de título padrão com parâmetros OU."""
     aviso = " NÃO ESTACIONÁRIA (ADF)" if not res["serie_estacionaria_5pct"] else ""
@@ -436,9 +406,6 @@ def _titulo_ou(res, modo):
 def plotar_serie_projecao(df_plot, df_full, res, pasta, modo, interativo=False):
     """
     Subplot 1 — Série histórica + MMs + projeção Monte Carlo.
-
-    interativo=True  → abre janela matplotlib com toolbar (zoom/pan/salvar).
-    interativo=False → salva PNG diretamente (modo batch).
     """
     df_plot = df_plot.sort_values("data").copy()
     y       = df_plot["valor"].values
@@ -470,9 +437,7 @@ def plotar_serie_projecao(df_plot, df_full, res, pasta, modo, interativo=False):
     df_plot[f"MM{mm_w1}"] = df_plot["valor"].rolling(mm_w1).mean()
     df_plot[f"MM{mm_w2}"] = df_plot["valor"].rolling(mm_w2).mean()
 
-    # ── Backend: interativo usa TkAgg/Qt5Agg; batch usa Agg 
     if interativo:
-        # Tenta backends gráficos na ordem de preferência
         for backend in ("TkAgg", "Qt5Agg", "Qt4Agg", "WXAgg", "MacOSX"):
             try:
                 matplotlib.use(backend)
@@ -797,13 +762,8 @@ def plotar_dispersao_delta(df_plot, res, pasta, modo):
     print(f"  Dispersão ΔS salvo: {caminho}")
 
 
-# 7b. Dashboard legado (mantido para compatibilidade — chama os plots separados)
+# dashboard legado
 def plotar_dashboard_ou(df_plot, df_full, res, pasta, modo):
-    """
-    Mantido para compatibilidade.
-    Agora delega para as funções individuais de plot — cada gráfico em arquivo separado.
-    O gráfico principal diário (série + projeção) é aberto em janela interativa.
-    """
     interativo_principal = (modo == "diario")
 
     plotar_serie_projecao(df_plot, df_full, res, pasta, modo,
@@ -816,7 +776,7 @@ def plotar_dashboard_ou(df_plot, df_full, res, pasta, modo):
     plotar_dispersao_delta(df_plot, res, pasta, modo)
 
 
-# 8. Plot mensal (dia 1) com Monte Carlo — arquivo separado
+# plot mensal com monte carlo
 def plotar_mensal_primeiro_dia(df, df_full, res, pasta):
     df        = df.sort_values("data").copy()
     df        = df[df["data"].dt.day == 1].copy()
@@ -894,7 +854,9 @@ def plotar_mensal_primeiro_dia(df, df_full, res, pasta):
 
 
 
-# 9. Função principal
+####Função principal##############
+
+
 def rodar_modelo(df_base, df_full, modo):
     print(f"\n{'='*60}")
     print(f" Rodando modelo OU — {modo.upper()}")
@@ -936,7 +898,6 @@ def rodar_modelo(df_base, df_full, modo):
     print(f"  Proj. 1 passo= {res_global['Projeção_1passo']:.4f} "
           f"(Δ esperado: {res_global['Δy_esperado_1passo']:+.4f})")
 
-    # ── Gráficos individuais (cada um em arquivo separado) 
     plotar_dashboard_ou(df, df_full, res_global, pasta, modo)
 
     if modo == "mensal":
@@ -945,19 +906,9 @@ def rodar_modelo(df_base, df_full, modo):
     pd.DataFrame([res_global]).to_csv(f"{pasta}/OU_global.csv", index=False)
     print(f" Parâmetros salvos: {pasta}/OU_global.csv")
 
+#MÓDULO DE VALIDAÇÃO BC Nº 25/2018
 
-# ╔═══════════════════════════════════════════════════════
-# ║     MÓDULO DE VALIDAÇÃO BC Nº 25/2018                       
-# ║     + Decomposição Viés/Variância                             
-# ║     + Teste Diebold-Mariano                                 
-# ║     + Tratamento de Datas de Referência                     
-# ╚═══════════════════════════════════════════════════════
-
-
-# ────────────────────────────────────────────────────────────
-# BC-1. Prepara série em LOG
-# ────────────────────────────────────────────────────────────
-
+# BC-1
 def preparar_log(df_base, modo, anos_recentes=10):
     """
     Retorna série com log_valor e datas de referência alinhadas.
@@ -970,7 +921,6 @@ def preparar_log(df_base, modo, anos_recentes=10):
     df = df[df["data"] >= data_corte].copy()
 
     if modo == "mensal":
-        # Agrupa por mês e pega o ÚLTIMO dia disponível (fechamento mensal)
         df["mes"] = df["data"].dt.to_period("M")
         df = df.groupby("mes").last().reset_index()
         df["data"] = df["mes"].dt.to_timestamp("M")
@@ -984,10 +934,7 @@ def preparar_log(df_base, modo, anos_recentes=10):
           f"| {len(df)} obs ({modo})")
     return df
 
-
-# ─────────────────────────────────────────────────────────────────────────────
-# BC-2. Previsão OU h-passos à frente
-# ─────────────────────────────────────────────────────────────────────────────
+# BC-2 Previsão OU h-passos à frente
 def previsao_ou_h(res, y0_log, h):
     """
     Projeção iterativa discreta do OU para h passos.
@@ -1001,9 +948,8 @@ def previsao_ou_h(res, y0_log, h):
     return y
 
 
-# ─────────────────────────────────────────────────────────────────────────────
-# BC-3. Teste Diebold-Mariano
-# ─────────────────────────────────────────────────────────────────────────────
+
+# BC-3 teste diebold-mariano
 def diebold_mariano(e1, e2, h=1):
     """
     Teste Diebold-Mariano (1995) para comparação de precisão preditiva.
@@ -1031,7 +977,7 @@ def diebold_mariano(e1, e2, h=1):
 
     d_bar = np.mean(d)
 
-    # Variância HAC (Newey-West com h-1 lags)
+    # variância HAC
     gamma0 = np.mean((d - d_bar)**2)
     hac_var = gamma0
     for k in range(1, h):
@@ -1041,11 +987,11 @@ def diebold_mariano(e1, e2, h=1):
         hac_var += 2 * (1 - k / h) * gamma_k
     hac_var = max(hac_var, 1e-12)
 
-    # Correção HLN para amostras finitas
+    # correção HLN para amostras finitas
     correction = np.sqrt((T + 1 - 2*h + h*(h-1)/T) / T)
     dm_stat    = (d_bar / np.sqrt(hac_var / T)) * correction
 
-    # Distribuição t com T-1 graus de liberdade (HLN)
+    # dist t com gl-1 graus de liberdade 
     p_value = 2 * stats.t.sf(abs(dm_stat), df=T - 1)
 
     if p_value < 0.01:
@@ -1069,9 +1015,8 @@ def diebold_mariano(e1, e2, h=1):
     return dm_stat, p_value, conclusao
 
 
-# ───────────────────────────────────────────────
-# BC-4. Decomposição Viés/Variância
-# ───────────────────────────────────────────────#                                    
+
+# BC-4 decomposição vies/variância                                
 def decompor_eqm(erros_y_real, erros_y_pred):
     
     """
@@ -1121,9 +1066,7 @@ def decompor_eqm(erros_y_real, erros_y_pred):
     }
 
 
-# ─────────────────────────────────────────────────────────────────────────────
-# BC-5. Backtest rolling — EQM relativo + DM + Viés/Variância
-# ─────────────────────────────────────────────────────────────────────────────
+# BC-5 backtest rolling: EQM relativo + DM + vies/variância
 def backtest_bc_rolling(df_log, modo="mensal", max_h=12, janela_anos=5):
     freq   = 12 if modo == "mensal" else 252
     janela = janela_anos * freq
@@ -1172,10 +1115,10 @@ def backtest_bc_rolling(df_log, modo="mensal", max_h=12, janela_anos=5):
         eqm_rw  = np.mean(np.array(erros_rw)**2)
         eqm_rel = eqm_ou / eqm_rw
 
-        # Diebold-Mariano
+        # diebold-mariano
         dm_stat, p_val, dm_conc = diebold_mariano(erros_ou, erros_rw, h=h)
 
-        # Decomposição Viés/Variância
+        # decomposição vies/variância
         decomp = decompor_eqm(y_reais, y_preds_ou)
 
         sinal = "y" if eqm_rel < 1 else "n"
@@ -1201,11 +1144,7 @@ def backtest_bc_rolling(df_log, modo="mensal", max_h=12, janela_anos=5):
 
     return pd.DataFrame(resultados)
 
-
-# ───────────────────────────────────────────
-# BC-6. Backtest com fator k
-# ───────────────────────────────────────────
-                                 
+# BC-6 backtest com fator k        
 def backtest_bc_fator_k(df_log, modo="mensal", max_h=12, janela_anos=5,
                         percentis_k=(0, 25, 50, 75, 85, 90)):
     freq   = 12 if modo == "mensal" else 252
@@ -1259,9 +1198,7 @@ def backtest_bc_fator_k(df_log, modo="mensal", max_h=12, janela_anos=5,
     return df_tab
 
 
-# ─────────────────────────────────────────────────────
-# BC-7. Gráficos BC — cada um em arquivo separado
-# ─────────────────────────────────────────────────────                            
+# BC-7. Gráficos BC                      
 def plotar_eqm_relativo(df_res, modo, pasta):
     """BC Plot A — EQM relativo OU vs RW por horizonte."""
     fig, ax = plt.subplots(figsize=(10, 6), dpi=110)
@@ -1391,10 +1328,7 @@ def plotar_eqm_bc(df_res, modo, pasta="resultados_bc"):
     plotar_decomposicao_vies(df_res, modo, pasta)
     plotar_rmse_mae(df_res, modo, pasta)
 
-
-# ────────────────────────────────────────────────
-# BC-8. Heatmap Tabela 2 — arquivo separado
-# ─────────────────────────────────────────────────                                    
+# BC-8 heatmap Tabela 2                                   
 def plotar_tabela2_bc(df_tab, modo, pasta="resultados_bc"):
     os.makedirs(pasta, exist_ok=True)
 
@@ -1424,9 +1358,7 @@ def plotar_tabela2_bc(df_tab, modo, pasta="resultados_bc"):
     print(f"  BC Heatmap Tabela 2 salvo: {caminho}")
 
 
-# ─────────────────────────────────────────
-# BC-9. Executor do módulo BC completo
-# ─────────────────────────────────────────                                          
+# BC-9 executor do módulo BC completo                                       
 def rodar_validacao_bc(df_base, modo="mensal", max_h=12,
                        janela_anos=5, anos_recentes=10):
     print(f"\n{'#'*60}")
@@ -1490,7 +1422,7 @@ print(f" Resultados BC  → {PASTA_RAIZ_BC}/")
 print()
 print("Estrutura de arquivos gerados:")
 print(f"  {PASTA_RAIZ_OU}/diario/")
-print("    01_serie_projecao_diario.png   ← Série + MC (tb abriu janela interativa)")
+print("    01_serie_projecao_diario.png   ← Série + MC")
 print("    02_residuos_diario.png")
 print("    03_qqplot_diario.png")
 print("    04_distribuicao_residuos_diario.png")
